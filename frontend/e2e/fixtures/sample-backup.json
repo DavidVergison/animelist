@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "animeCache": [
+    {
+      "anilistId": 90001,
+      "titleRomaji": "Available Show",
+      "titleEnglish": "Available Show",
+      "titleNative": null,
+      "coverImage": null,
+      "coverColor": "#5b8def",
+      "episodes": 12,
+      "status": "FINISHED",
+      "nextEpNum": null,
+      "nextEpAiringAt": null,
+      "lastSynced": 1735689600
+    }
+  ],
+  "userList": [
+    {
+      "anilistId": 90001,
+      "status": "watching",
+      "progress": 4,
+      "addedAt": 1735689600,
+      "updatedAt": 1735689600
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.env
+data
+**/playwright-report
+**/test-results
+proto
+PLAN.md
+CLAUDE.md
+README.md

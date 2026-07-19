@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+data/
+*.db
+*.db-wal
+*.db-shm
+playwright-report/
+test-results/

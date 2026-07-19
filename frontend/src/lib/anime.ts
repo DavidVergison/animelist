@@ -1,0 +1,66 @@
+import type { ListEntry, Media } from '@suivi/shared';
+
+// Ported from proto/anime-tracker.jsx — same logic, typed. Do not change the state
+// machine (nextState) without re-checking it against the prototype: it's the reference
+// for UX/state behavior (README §1/§9).
+
+export const pickTitle = (t: Media['title']): string => t.english || t.romaji || t.native || 'Sans titre';
+
+export function subTitle(t: Media['title']): string | null {
+  const main = pickTitle(t);
+  return [t.romaji, t.native, t.english].find((x) => x && x !== main) ?? null;
+}
+
+export function fmtDate(ts: number): string {
+  return new Date(ts * 1000).toLocaleString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function countdown(ts: number): string {
+  const diff = ts * 1000 - Date.now();
+  if (diff <= 0) return 'maintenant';
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor((diff % 86_400_000) / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  if (d > 0) return `dans ${d} j ${h} h`;
+  if (h > 0) return `dans ${h} h ${m} min`;
+  return `dans ${m} min`;
+}
+
+export type CardState =
+  | { kind: 'finished' }
+  | { kind: 'available'; epNum: number }
+  | { kind: 'scheduled'; epNum: number; airingAt: number }
+  | { kind: 'uptodate'; epNum?: number; nextAiringAt?: number };
+
+export const CARD_STATE_ORDER: Record<CardState['kind'], number> = {
+  available: 0,
+  scheduled: 1,
+  uptodate: 2,
+  finished: 3,
+};
+
+export function nextState(entry: ListEntry): CardState {
+  const { progress, episodes, status, nextAiringEpisode } = entry;
+  const nextEp = progress + 1;
+
+  if (episodes && progress >= episodes) return { kind: 'finished' };
+
+  if (nextAiringEpisode) {
+    const airedCount = nextAiringEpisode.episode - 1;
+    if (nextEp <= airedCount) return { kind: 'available', epNum: nextEp };
+    if (nextEp === nextAiringEpisode.episode) {
+      return { kind: 'scheduled', epNum: nextEp, airingAt: nextAiringEpisode.airingAt };
+    }
+    return { kind: 'uptodate', nextAiringAt: nextAiringEpisode.airingAt, epNum: nextAiringEpisode.episode };
+  }
+
+  if (episodes && nextEp <= episodes) return { kind: 'available', epNum: nextEp };
+  if (status === 'FINISHED' && (!episodes || progress >= episodes)) return { kind: 'finished' };
+  return { kind: 'uptodate' };
+}

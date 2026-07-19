@@ -1,0 +1,21 @@
+{
+  "name": "suivi-anime",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "typecheck": "tsc -b shared backend frontend",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^24.0.0"
+  }
+}

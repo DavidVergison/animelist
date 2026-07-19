@@ -1,0 +1,20 @@
+{
+  "name": "@suivi/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/multipart": "^10.1.0",
+    "@fastify/rate-limit": "^11.1.0",
+    "@fastify/static": "^10.1.0",
+    "@suivi/shared": "*",
+    "fastify": "^5.10.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "node --test 'src/**/*.test.ts'"
+  }
+}
