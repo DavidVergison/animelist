@@ -193,13 +193,13 @@ export function createQueries(db: DatabaseSync) {
 
   const stmtDeleteAnimeCache = db.prepare(`DELETE FROM anime_cache WHERE anilist_id = ?`);
 
-  const stmtSelectReleasingIds = db.prepare(`
-    SELECT anilist_id AS anilistId FROM anime_cache WHERE status = 'RELEASING'
+  const stmtSelectRefreshableIds = db.prepare(`
+    SELECT anilist_id AS anilistId FROM anime_cache WHERE status IN ('RELEASING', 'NOT_YET_RELEASED')
   `);
 
   const stmtUpdateRefreshedMeta = db.prepare(`
     UPDATE anime_cache
-    SET status = ?, next_ep_num = ?, next_ep_airing_at = ?, last_synced = ?
+    SET status = ?, episodes = ?, next_ep_num = ?, next_ep_airing_at = ?, last_synced = ?
     WHERE anilist_id = ?
   `);
 
@@ -294,16 +294,30 @@ export function createQueries(db: DatabaseSync) {
       stmtDeleteAnimeCache.run(anilistId);
     },
 
-    /** IDs of every cached anime still airing — the refresh scheduler's target set. */
-    selectReleasingIds(): number[] {
-      return stmtSelectReleasingIds.all().map((row) => asNumber(row.anilistId));
+    /** IDs of every cached anime still airing or announced but not yet aired — the
+     * refresh scheduler's target set (README §7). */
+    selectRefreshableIds(): number[] {
+      return stmtSelectRefreshableIds.all().map((row) => asNumber(row.anilistId));
     },
 
     updateRefreshedMeta(
       anilistId: number,
-      meta: { status: string; nextEpNum: number | null; nextEpAiringAt: number | null; lastSynced: number },
+      meta: {
+        status: string;
+        episodes: number | null;
+        nextEpNum: number | null;
+        nextEpAiringAt: number | null;
+        lastSynced: number;
+      },
     ): void {
-      stmtUpdateRefreshedMeta.run(meta.status, meta.nextEpNum, meta.nextEpAiringAt, meta.lastSynced, anilistId);
+      stmtUpdateRefreshedMeta.run(
+        meta.status,
+        meta.episodes,
+        meta.nextEpNum,
+        meta.nextEpAiringAt,
+        meta.lastSynced,
+        anilistId,
+      );
     },
 
     /** Every cached anime, for backup export (README §8). */

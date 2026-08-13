@@ -11,17 +11,17 @@ export type RefreshScheduler = {
 };
 
 /**
- * One refresh pass: re-syncs every `RELEASING` cached anime in a single batched AniList
- * request (README §7 — never one request per anime, to stay under the rate limit).
- * A failed AniList call is logged and swallowed, not thrown — a transient outage must
- * never crash the scheduler or the server.
+ * One refresh pass: re-syncs every `RELEASING` or `NOT_YET_RELEASED` cached anime in a
+ * single batched AniList request (README §7 — never one request per anime, to stay under
+ * the rate limit). A failed AniList call is logged and swallowed, not thrown — a
+ * transient outage must never crash the scheduler or the server.
  */
 export async function runRefreshOnce(
   queries: Queries,
   anilistClient: AnilistClient,
   onError?: (err: unknown) => void,
 ): Promise<void> {
-  const ids = queries.selectReleasingIds();
+  const ids = queries.selectRefreshableIds();
   if (ids.length === 0) return;
 
   let mediaById: Map<number, Media>;
@@ -40,6 +40,7 @@ export async function runRefreshOnce(
     if (!media) continue;
     queries.updateRefreshedMeta(id, {
       status: media.status,
+      episodes: media.episodes,
       nextEpNum: media.nextAiringEpisode?.episode ?? null,
       nextEpAiringAt: media.nextAiringEpisode?.airingAt ?? null,
       lastSynced: now,

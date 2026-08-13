@@ -36,13 +36,15 @@ export type CardState =
   | { kind: 'finished' }
   | { kind: 'available'; epNum: number }
   | { kind: 'scheduled'; epNum: number; airingAt: number }
-  | { kind: 'uptodate'; epNum?: number; nextAiringAt?: number };
+  | { kind: 'uptodate'; epNum?: number; nextAiringAt?: number }
+  | { kind: 'unreleased' };
 
 export const CARD_STATE_ORDER: Record<CardState['kind'], number> = {
   available: 0,
   scheduled: 1,
   uptodate: 2,
-  finished: 3,
+  unreleased: 3,
+  finished: 4,
 };
 
 export function nextState(entry: ListEntry): CardState {
@@ -60,7 +62,33 @@ export function nextState(entry: ListEntry): CardState {
     return { kind: 'uptodate', nextAiringAt: nextAiringEpisode.airingAt, epNum: nextAiringEpisode.episode };
   }
 
+  // Not ported from the proto: AniList reports an announced season's final episode
+  // count (e.g. a 1-episode movie) before it airs, with no nextAiringEpisode yet —
+  // without this check the fallback below misreads that as "already available".
+  if (status === 'NOT_YET_RELEASED') return { kind: 'unreleased' };
+
   if (episodes && nextEp <= episodes) return { kind: 'available', epNum: nextEp };
   if (status === 'FINISHED' && (!episodes || progress >= episodes)) return { kind: 'finished' };
   return { kind: 'uptodate' };
+}
+
+/** Ma liste tabs (App.tsx §9). `progress === 0` wins over `finished`: a season that
+ * aired in full but was never started belongs in "Non commencées", not "Terminées". */
+export type TabId = 'active' | 'unstarted' | 'finished';
+
+export function tabFor(entry: ListEntry): TabId {
+  if (entry.progress === 0) return 'unstarted';
+  return nextState(entry).kind === 'finished' ? 'finished' : 'active';
+}
+
+/** Available first, then scheduled (soonest airingAt first), then uptodate. Shared by
+ * the "En cours" and "Non commencées" tabs; "Terminées" sorts alphabetically instead. */
+export function byCardState(a: ListEntry, b: ListEntry): number {
+  const sa = nextState(a);
+  const sb = nextState(b);
+  if (CARD_STATE_ORDER[sa.kind] !== CARD_STATE_ORDER[sb.kind]) {
+    return CARD_STATE_ORDER[sa.kind] - CARD_STATE_ORDER[sb.kind];
+  }
+  if (sa.kind === 'scheduled' && sb.kind === 'scheduled') return sa.airingAt - sb.airingAt;
+  return 0;
 }

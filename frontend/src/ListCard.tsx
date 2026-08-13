@@ -82,6 +82,7 @@ export function ListCard({ entry, onWatch, onUnwatch, onRemove, onCatchUp }: Lis
               </span>
             )}
             {st.kind === 'finished' && <span className="pill pill-done">Saison terminée · vue</span>}
+            {st.kind === 'unreleased' && <span className="pill pill-soon">Pas encore diffusé</span>}
           </div>
           <div className="progress-line">
             <span>

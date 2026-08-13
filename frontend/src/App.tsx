@@ -3,7 +3,7 @@ import type { ListEntry, Media } from '@suivi/shared';
 import { Login } from './Login.tsx';
 import { Settings } from './Settings.tsx';
 import { ListCard } from './ListCard.tsx';
-import { CARD_STATE_ORDER, nextState, pickTitle, subTitle } from './lib/anime.ts';
+import { byCardState, pickTitle, subTitle, tabFor, type TabId } from './lib/anime.ts';
 import {
   ApiError,
   addToList,
@@ -21,7 +21,7 @@ export function App() {
   const [list, setList] = useState<ListEntry[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [tab, setTab] = useState<'active' | 'finished'>('active');
+  const [tab, setTab] = useState<TabId>('active');
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Media[]>([]);
@@ -94,6 +94,7 @@ export function App() {
     try {
       const entry = await addToList(media.id);
       setList((l) => [...l, entry]);
+      setTab(tabFor(entry));
     } catch {
       setSearchError("Impossible d'ajouter cet anime pour le moment.");
     } finally {
@@ -150,22 +151,12 @@ export function App() {
     return <Settings onClose={() => setShowSettings(false)} onRestored={loadList} />;
   }
 
-  const active: ListEntry[] = [];
-  const finished: ListEntry[] = [];
-  for (const entry of list) {
-    (nextState(entry).kind === 'finished' ? finished : active).push(entry);
-  }
-  active.sort((a, b) => {
-    const sa = nextState(a);
-    const sb = nextState(b);
-    if (CARD_STATE_ORDER[sa.kind] !== CARD_STATE_ORDER[sb.kind]) {
-      return CARD_STATE_ORDER[sa.kind] - CARD_STATE_ORDER[sb.kind];
-    }
-    if (sa.kind === 'scheduled' && sb.kind === 'scheduled') return sa.airingAt - sb.airingAt;
-    return 0;
-  });
-  finished.sort((a, b) => pickTitle(a.title).localeCompare(pickTitle(b.title)));
-  const shown = tab === 'active' ? active : finished;
+  const buckets: Record<TabId, ListEntry[]> = { active: [], unstarted: [], finished: [] };
+  for (const entry of list) buckets[tabFor(entry)].push(entry);
+  buckets.active.sort(byCardState);
+  buckets.unstarted.sort(byCardState);
+  buckets.finished.sort((a, b) => pickTitle(a.title).localeCompare(pickTitle(b.title)));
+  const shown = buckets[tab];
 
   return (
     <div className="app">
@@ -232,7 +223,15 @@ export function App() {
             aria-selected={tab === 'active'}
             onClick={() => setTab('active')}
           >
-            En cours <span className="count">{active.length}</span>
+            En cours <span className="count">{buckets.active.length}</span>
+          </button>
+          <button
+            className={`tab${tab === 'unstarted' ? ' active' : ''}`}
+            role="tab"
+            aria-selected={tab === 'unstarted'}
+            onClick={() => setTab('unstarted')}
+          >
+            Non commencées <span className="count">{buckets.unstarted.length}</span>
           </button>
           <button
             className={`tab${tab === 'finished' ? ' active' : ''}`}
@@ -240,7 +239,7 @@ export function App() {
             aria-selected={tab === 'finished'}
             onClick={() => setTab('finished')}
           >
-            Terminées <span className="count">{finished.length}</span>
+            Terminées <span className="count">{buckets.finished.length}</span>
           </button>
         </div>
         {listError && (
@@ -252,11 +251,15 @@ export function App() {
           <div className="empty">Rien à suivre. Cherche une saison ci-dessus et ajoute-la.</div>
         ) : shown.length === 0 ? (
           <div className="empty">
-            {tab === 'active' ? 'Tout est à jour.' : 'Aucune saison terminée pour l’instant.'}
+            {tab === 'active'
+              ? 'Tout est à jour.'
+              : tab === 'unstarted'
+                ? 'Aucune saison en attente.'
+                : 'Aucune saison terminée pour l’instant.'}
           </div>
         ) : (
           <>
-            {tab === 'active' && (
+            {(tab === 'active' || tab === 'unstarted') && (
               <div className="swipe-legend">← glisse pour annuler · glisse pour marquer vu →</div>
             )}
             {shown.map((entry) => (

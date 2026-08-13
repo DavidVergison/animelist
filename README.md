@@ -240,13 +240,17 @@ Les dates AniList changent (pauses, reports) — le refresh n'est pas optionnel.
 - `setInterval` lancé au démarrage (+ un passage immédiat), intervalle **3–6 h**.
 - Sélectionne les animes à rafraîchir :
   ```sql
-  SELECT anilist_id FROM anime_cache WHERE status = 'RELEASING';
+  SELECT anilist_id FROM anime_cache WHERE status IN ('RELEASING', 'NOT_YET_RELEASED');
   ```
   Pas de `JOIN` nécessaire : le cache ne contient **que** des animes suivis (peuplé uniquement
-  à l'ajout), et seuls ceux en cours de diffusion ont des dates qui bougent.
+  à l'ajout). `NOT_YET_RELEASED` est inclus : une saison annoncée mais pas encore diffusée doit
+  continuer d'être suivie jusqu'à ce qu'AniList lui attribue une date/passe en `RELEASING`,
+  sinon elle reste figée dans le cache indéfiniment.
 - Requête AniList par batch (alias GraphQL : plusieurs `Media(id:)` dans une même query) pour
   rester sous le rate limit (90 req/min/IP).
-- Met à jour `next_ep_num`, `next_ep_airing_at`, `status`, `last_synced`.
+- Met à jour `next_ep_num`, `next_ep_airing_at`, `status`, `episodes`, `last_synced`. `episodes`
+  est inclus car une annonce peut voir son nombre d'épisodes changer une fois la diffusion
+  commencée.
 - `clearInterval` + fermeture propre de la DB sur `SIGTERM` / `SIGINT` (shutdown gracieux).
 
 ---
@@ -284,11 +288,19 @@ Les dates AniList changent (pauses, reports) — le refresh n'est pas optionnel.
 ## 9. Frontend (port du proto en TypeScript)
 
 - Porter `proto/anime-tracker.jsx` en `frontend/src/App.tsx` : **conserver à l'identique** la
-  direction visuelle, le composant de carte swipeable et les **4 états** de carte
+  direction visuelle, le composant de carte swipeable et les **4 états** de carte du proto
   (`available` / `scheduled` / `uptodate` / `finished`), ainsi que le tri de la liste.
-- Deux onglets dans « Ma liste » : **En cours** (tout ce qui n'est pas `finished`) et
-  **Terminées** (`finished`), chacun avec son compteur. Une saison qui devient
-  `finished` (progress = episodes) bascule automatiquement d'onglet.
+- 5e état ajouté au-delà du proto : `unreleased` (`status === 'NOT_YET_RELEASED'` sans
+  `nextAiringEpisode` connu). Sans lui, une saison annoncée (ex. un film avec un nombre
+  d'épisodes déjà connu mais aucune date de diffusion) était affichée à tort comme `available`
+  — voir `nextState` dans `frontend/src/lib/anime.ts`. Pastille `.pill-soon` « Pas encore
+  diffusé », pas de bouton « Tout rattraper ».
+- Trois onglets dans « Ma liste », chacun avec son compteur : **En cours** (`progress > 0`
+  et pas `finished`), **Non commencées** (`progress === 0`, quel que soit l'état de
+  diffusion) et **Terminées** (`finished`). `progress === 0` est prioritaire sur `finished` :
+  une saison diffusée en entier mais jamais vue reste « Non commencées ». Une saison ajoutée
+  bascule automatiquement l'onglet affiché vers celui où elle atterrit ; une saison dont la
+  `progress` change (swipe, « Tout rattraper ») bascule automatiquement d'onglet.
 - Typer avec les types importés de `shared/` — **ne pas redéclarer** les types du contrat.
 - Chargement de la liste via `GET /api/list` au montage.
 - **Mutations optimistes** : le swipe met à jour l'UI immédiatement, appelle l'API,

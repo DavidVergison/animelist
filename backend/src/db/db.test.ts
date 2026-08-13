@@ -158,37 +158,45 @@ test('JOIN liste renvoie un ListEntry conforme au contrat', () => {
   });
 });
 
-test('sélection RELEASING ne renvoie que les animes en cours de diffusion', () => {
+test('sélection RELEASING/NOT_YET_RELEASED ne renvoie que les animes à rafraîchir', () => {
   withTempDb((db) => {
     const q = createQueries(db);
     q.upsertAnimeCache(sampleAnimeCacheRow({ anilistId: 1, status: 'RELEASING' }));
     q.upsertAnimeCache(sampleAnimeCacheRow({ anilistId: 2, status: 'FINISHED' }));
     q.upsertAnimeCache(sampleAnimeCacheRow({ anilistId: 3, status: 'RELEASING' }));
+    q.upsertAnimeCache(sampleAnimeCacheRow({ anilistId: 4, status: 'NOT_YET_RELEASED' }));
 
-    const ids = q.selectReleasingIds().sort();
-    assert.deepEqual(ids, [1, 3]);
+    const ids = q.selectRefreshableIds().sort();
+    assert.deepEqual(ids, [1, 3, 4]);
   });
 });
 
 test('updateRefreshedMeta met à jour les colonnes de rafraîchissement', () => {
   withTempDb((db) => {
     const q = createQueries(db);
-    q.upsertAnimeCache(sampleAnimeCacheRow({ status: 'RELEASING', nextEpNum: 12, nextEpAiringAt: 1_800_000_000 }));
+    q.upsertAnimeCache(
+      sampleAnimeCacheRow({ status: 'RELEASING', episodes: null, nextEpNum: 12, nextEpAiringAt: 1_800_000_000 }),
+    );
 
     q.updateRefreshedMeta(1, {
       status: 'FINISHED',
+      episodes: 12,
       nextEpNum: null,
       nextEpAiringAt: null,
       lastSynced: 1_900_000_000,
     });
 
-    const row = db.prepare('SELECT status, next_ep_num, next_ep_airing_at, last_synced FROM anime_cache WHERE anilist_id = ?').get(1) as {
+    const row = db
+      .prepare('SELECT status, episodes, next_ep_num, next_ep_airing_at, last_synced FROM anime_cache WHERE anilist_id = ?')
+      .get(1) as {
       status: string;
+      episodes: number | null;
       next_ep_num: number | null;
       next_ep_airing_at: number | null;
       last_synced: number;
     };
     assert.equal(row.status, 'FINISHED');
+    assert.equal(row.episodes, 12);
     assert.equal(row.next_ep_num, null);
     assert.equal(row.next_ep_airing_at, null);
     assert.equal(row.last_synced, 1_900_000_000);

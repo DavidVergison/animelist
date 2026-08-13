@@ -435,6 +435,11 @@ body {
   color: var(--done);
 }
 
+.pill-soon {
+  background: rgba(91, 141, 239, 0.08);
+  color: var(--wait);
+}
+
 .progress-line {
   display: flex;
   align-items: center;

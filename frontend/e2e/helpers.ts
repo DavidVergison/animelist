@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-export const FIXTURE_IDS = [90_001, 90_002, 90_003, 90_004] as const;
+export const FIXTURE_IDS = [90_001, 90_002, 90_003, 90_004, 90_005] as const;
 
 /** Navigates to the app — already authenticated via the shared `storageState`
  * (see global-setup.ts), so no UI login round-trip (and no rate-limit risk) per test. */
@@ -28,6 +28,11 @@ export async function addViaSearch(page: Page, term: string): Promise<void> {
 
 export function rowFor(page: Page, title: string) {
   return page.locator('.row-wrap').filter({ has: page.locator('.card-title', { hasText: title }) });
+}
+
+/** Opens one of the three "Ma liste" tabs (En cours / Non commencées / Terminées). */
+export async function openTab(page: Page, name: RegExp): Promise<void> {
+  await page.getByRole('tab', { name }).click();
 }
 
 /** Drags a card left/right past the swipe threshold — the only way to mark

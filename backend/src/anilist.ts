@@ -4,8 +4,8 @@ export type AnilistClient = {
   search(term: string): Promise<Media[]>;
   fetchById(id: number): Promise<Media | null>;
   /** One batched request for all `ids` (GraphQL aliases) — the refresh scheduler's
-   * rate-limit-friendly way to re-sync many RELEASING entries at once (README §7).
-   * Ids AniList no longer recognizes are simply absent from the returned map. */
+   * rate-limit-friendly way to re-sync many RELEASING/NOT_YET_RELEASED entries at once
+   * (README §7). Ids AniList no longer recognizes are simply absent from the returned map. */
   fetchByIds(ids: number[]): Promise<Map<number, Media>>;
 };
 

@@ -53,6 +53,18 @@ function buildFixtures(): Media[] {
       coverImage: { medium: null, color: '#3ecf8e' },
       nextAiringEpisode: null,
     },
+    // NOT_YET_RELEASED, no nextAiringEpisode -> "unreleased" at progress 0. Mirrors the
+    // real shape of an announced-but-unaired season (e.g. AniList id 195200, "Demon
+    // Slayer: Infinity Castle Part 2"): episodes known, no airing date yet.
+    {
+      id: 90_005,
+      title: { romaji: 'Unreleased Show', english: 'Unreleased Show', native: null },
+      episodes: 1,
+      status: 'NOT_YET_RELEASED',
+      seasonYear: null,
+      coverImage: { medium: null, color: '#c084fc' },
+      nextAiringEpisode: null,
+    },
   ];
 }
 

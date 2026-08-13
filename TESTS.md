@@ -53,9 +53,9 @@ Convention des références : `fichier :: nom du test`. `[e2e]` = spec Playwrigh
 | Fonctionnalité | Test |
 |---|---|
 | Passage immédiat au démarrage + intervalle | `refresh.test.ts :: startRefreshScheduler déclenche un passage immédiat puis répète, et stop() nettoie bien l'intervalle` |
-| Cible uniquement `RELEASING` | `db/db.test.ts :: sélection RELEASING...` + `refresh.test.ts :: runRefreshOnce ne rafraîchit que les animes RELEASING` |
-| Batch = une seule requête AniList pour N ids | `anilist.test.ts :: fetchByIds regroupe N ids en une seule requête HTTP (alias GraphQL)` + `refresh.test.ts :: ... regroupe N animes RELEASING en un seul appel batché` |
-| Met à jour exactement les colonnes de refresh | `refresh.test.ts :: runRefreshOnce met à jour exactement les colonnes de rafraîchissement` |
+| Cible `RELEASING` et `NOT_YET_RELEASED`, jamais `FINISHED` | `db/db.test.ts :: sélection RELEASING/NOT_YET_RELEASED...` + `refresh.test.ts :: runRefreshOnce rafraîchit les animes RELEASING et NOT_YET_RELEASED, jamais les FINISHED` |
+| Batch = une seule requête AniList pour N ids | `anilist.test.ts :: fetchByIds regroupe N ids en une seule requête HTTP (alias GraphQL)` + `refresh.test.ts :: ... regroupe N animes à rafraîchir en un seul appel batché` |
+| Met à jour exactement les colonnes de refresh (`episodes` inclus) | `refresh.test.ts :: runRefreshOnce met à jour exactement les colonnes de rafraîchissement (episodes inclus)` |
 | Échec AniList avalé, jamais de crash | `refresh.test.ts :: ...n'écrit rien et ne jette pas si l'appel AniList échoue` |
 | Fermeture propre (DB + scheduler) sur signal | `shutdown.test.ts :: arrêt propre sur SIGTERM/SIGINT` (processus réel) |
 
@@ -72,9 +72,10 @@ Convention des références : `fichier :: nom du test`. `[e2e]` = spec Playwrigh
 ### §9 — Frontend
 | Fonctionnalité | Test |
 |---|---|
-| Port fidèle du proto : 4 états de carte | `[e2e] list.spec.ts :: les 4 états de carte (available / scheduled / uptodate / finished)` |
-| Tri de la liste par état | `lib/anime.ts`'s `CARD_STATE_ORDER`, exercé par `[e2e] list.spec.ts` (ordre d'affichage des 4 fixtures) |
-| Onglets En cours / Terminées : une saison terminée bascule d'onglet | `[e2e] list.spec.ts :: une saison terminée bascule de l'onglet En cours vers Terminées` |
+| Port fidèle du proto (4 états) + 5e état `unreleased` (`NOT_YET_RELEASED`) | `[e2e] list.spec.ts :: les 5 états de carte (available / scheduled / uptodate / unreleased / finished)` |
+| Tri de la liste par état | `lib/anime.ts`'s `CARD_STATE_ORDER`, exercé par `[e2e] list.spec.ts` (ordre d'affichage des fixtures) |
+| Onglets En cours / Non commencées / Terminées : une saison terminée bascule d'onglet | `[e2e] list.spec.ts :: une saison terminée bascule de l'onglet Non commencées vers Terminées` |
+| Onglet Non commencées : `progress === 0` bascule vers En cours au premier épisode vu | `[e2e] list.spec.ts :: une saison ajoutée mais non vue bascule vers En cours au premier épisode vu` |
 | Chargement de la liste au montage + persistance | `[e2e] list.spec.ts :: recherche -> ajout -> ... -> persiste après reload` + `login.spec.ts :: reload après login reste connecté` |
 | Swipe = mutation optimiste, rollback sur erreur | `[e2e] list.spec.ts :: swipe droite marque +1...` + `:: un échec réseau simulé sur la progression déclenche un rollback` |
 | Bouton Tout rattraper (dans la carte) | `[e2e] list.spec.ts :: bouton Tout rattraper (dans la carte)` |

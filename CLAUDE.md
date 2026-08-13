@@ -25,7 +25,7 @@ test), `USAGE.md` (guide de build/run/config pour l'utilisateur final),
   tout (voir règle d'encapsulation ci-dessous).
 - `backend/src/refresh.ts` — scheduler de rafraîchissement des dates de diffusion.
 - `frontend/src/lib/anime.ts` — logique pure portée du proto (états de carte, tri) ;
-  `App.tsx` gère les mutations optimistes et les onglets En cours/Terminées.
+  `App.tsx` gère les mutations optimistes et les onglets En cours/Non commencées/Terminées.
 
 ## Commandes
 

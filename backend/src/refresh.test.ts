@@ -77,31 +77,33 @@ function recordingClient(
   return { client, calls };
 }
 
-test('runRefreshOnce ne rafraîchit que les animes RELEASING', () =>
+test('runRefreshOnce rafraîchit les animes RELEASING et NOT_YET_RELEASED, jamais les FINISHED', () =>
   withTempQueries(async (queries) => {
     seedAnime(queries, 1, 'RELEASING');
     seedAnime(queries, 2, 'FINISHED');
     seedAnime(queries, 3, 'RELEASING');
+    seedAnime(queries, 4, 'NOT_YET_RELEASED');
 
     const { client, calls } = recordingClient(
       new Map([
         [1, mediaFor(1, { status: 'FINISHED' })],
         [2, mediaFor(2, { status: 'FINISHED' })], // would prove a bug if this got applied
         [3, mediaFor(3, { status: 'RELEASING' })],
+        [4, mediaFor(4, { status: 'RELEASING' })], // the announcement started airing
       ]),
     );
 
     await runRefreshOnce(queries, client);
 
-    assert.deepEqual(calls, [[1, 3]], 'only RELEASING ids must be sent to AniList');
+    assert.deepEqual(calls[0]?.sort((a, b) => a - b), [1, 3, 4], 'only RELEASING/NOT_YET_RELEASED ids must be sent to AniList');
   }));
 
-test('runRefreshOnce met à jour exactement les colonnes de rafraîchissement', () =>
+test('runRefreshOnce met à jour exactement les colonnes de rafraîchissement (episodes inclus)', () =>
   withTempQueries(async (queries) => {
     seedAnime(queries, 1, 'RELEASING', { nextEpNum: 5, nextEpAiringAt: 1_700_000_000 });
 
     const { client } = recordingClient(
-      new Map([[1, mediaFor(1, { status: 'FINISHED', nextAiringEpisode: null })]]),
+      new Map([[1, mediaFor(1, { status: 'FINISHED', episodes: 26, nextAiringEpisode: null })]]),
     );
 
     await runRefreshOnce(queries, client);
@@ -109,13 +111,13 @@ test('runRefreshOnce met à jour exactement les colonnes de rafraîchissement', 
     const entry = queries.getEntry(1);
     assert.ok(entry);
     assert.equal(entry.status, 'FINISHED');
+    assert.equal(entry.episodes, 26, 'episodes must be refreshed — an announcement gets its real count once it airs');
     assert.equal(entry.nextAiringEpisode, null, 'nextEpNum/nextEpAiringAt must both be cleared together');
-    // title/episodes/etc were never part of updateRefreshedMeta's SET clause — untouched.
+    // title/cover were never part of updateRefreshedMeta's SET clause — untouched.
     assert.equal(entry.title.romaji, 'Anime 1');
-    assert.equal(entry.episodes, 24);
   }));
 
-test('runRefreshOnce regroupe N animes RELEASING en un seul appel batché', () =>
+test('runRefreshOnce regroupe N animes à rafraîchir en un seul appel batché', () =>
   withTempQueries(async (queries) => {
     for (const id of [10, 11, 12, 13]) seedAnime(queries, id, 'RELEASING');
 
@@ -148,7 +150,7 @@ test("runRefreshOnce n'écrit rien et ne jette pas si l'appel AniList échoue (a
     assert.deepEqual(entry?.nextAiringEpisode, { episode: 5, airingAt: 1_700_000_000 }, 'left untouched on failure');
   }));
 
-test("runRefreshOnce ne fait aucun appel réseau s'il n'y a aucun anime RELEASING", () =>
+test("runRefreshOnce ne fait aucun appel réseau s'il n'y a aucun anime à rafraîchir", () =>
   withTempQueries(async (queries) => {
     seedAnime(queries, 1, 'FINISHED');
     const { client, calls } = recordingClient(new Map());
